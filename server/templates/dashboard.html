@@ -139,6 +139,88 @@
   }
   .no-data .icon { font-size: 2.5rem; opacity: .4; }
 
+  /* ── fan control panel ── */
+  .fan-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+  .fan-title {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .fan-slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+    min-width: 220px;
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(0,255,195,.5);
+    cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+  }
+  .fan-value {
+    font-family: var(--mono);
+    font-size: 1.3rem;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    min-width: 3.5ch;
+    text-align: right;
+  }
+  .fan-set-btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    padding: 7px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    white-space: nowrap;
+  }
+  .fan-set-btn:hover { background: var(--accent); color: var(--bg); }
+  .fan-set-btn:disabled { opacity: .4; cursor: default; }
+  .fan-feedback {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    min-width: 80px;
+  }
+
   footer {
     text-align: center;
     padding: 14px;
@@ -187,6 +269,17 @@
       <div style="font-size:0.7rem;opacity:.6">POST to /data to begin</div>
     </div>
     <canvas id="chart" style="display:none"></canvas>
+  </div>
+
+  <div class="fan-panel">
+    <div class="fan-title">Fan Control</div>
+    <div class="fan-slider-wrap">
+      <input type="range" id="fan-slider" min="0" max="100" value="0"
+             oninput="document.getElementById('fan-value').textContent = this.value + '%'">
+      <div class="fan-value" id="fan-value">0%</div>
+    </div>
+    <button class="fan-set-btn" id="fan-btn" onclick="setFanDuty()">SET</button>
+    <div class="fan-feedback" id="fan-feedback"></div>
   </div>
 </main>
 
@@ -334,6 +427,50 @@ async function poll() {
 // kick off polling
 poll();
 setInterval(poll, 2000);
+
+// ── fan control ──────────────────────────────────────────────────────────
+async function loadFanDuty() {
+  try {
+    const res  = await fetch('/fan/duty');
+    const data = await res.json();
+    const duty = data.duty ?? 0;
+    document.getElementById('fan-slider').value = duty;
+    document.getElementById('fan-value').textContent = duty + '%';
+  } catch (e) {
+    console.warn('Could not load fan duty:', e);
+  }
+}
+
+async function setFanDuty() {
+  const duty = parseInt(document.getElementById('fan-slider').value, 10);
+  const btn  = document.getElementById('fan-btn');
+  const fb   = document.getElementById('fan-feedback');
+
+  btn.disabled = true;
+  fb.textContent = 'Sending…';
+  try {
+    const res = await fetch('/fan/duty', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ duty }),
+    });
+    if (res.ok) {
+      fb.style.color = 'var(--accent)';
+      fb.textContent = 'Applied ✓';
+    } else {
+      fb.style.color = 'var(--accent2)';
+      fb.textContent = 'Error ' + res.status;
+    }
+  } catch (e) {
+    fb.style.color = 'var(--accent2)';
+    fb.textContent = 'Failed';
+  } finally {
+    btn.disabled = false;
+    setTimeout(() => { fb.textContent = ''; }, 2500);
+  }
+}
+
+loadFanDuty();
 </script>
 </body>
 </html>

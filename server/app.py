@@ -60,6 +60,9 @@ probe_data: dict[str, list[dict]] = defaultdict(list)
 # A monotonically increasing counter — the browser polls this to detect new data.
 data_version: int = 0
 
+# Current fan duty cycle setpoint, 0–100 %.
+fan_duty: int = 0
+
 
 # ---------------------------------------------------------------------------
 # Helper
@@ -141,9 +144,6 @@ def receive_batch():
     if stored:
         data_version += 1
 
-    if errors:
-        print(errors)
-
     status = 201 if not errors else (207 if stored else 422)
     return jsonify({"stored": stored, "errors": errors}), status
 
@@ -158,6 +158,40 @@ def api_data():
 def api_version():
     """Lightweight endpoint the browser polls to check for new data."""
     return jsonify({"version": data_version})
+
+
+@app.get("/fan/duty")
+def fan_duty_get():
+    """Return the current fan duty cycle setpoint (0–100).
+    The ESP32 polls this every second to pick up changes made in the UI.
+    """
+    return jsonify({"duty": fan_duty})
+
+
+@app.post("/fan/duty")
+def fan_duty_set():
+    """Set the fan duty cycle setpoint.
+
+    Body: { "duty": <integer 0–100> }
+
+    Example:
+        curl -X POST http://localhost:5000/fan/duty \\
+             -H "Content-Type: application/json" \\
+             -d '{"duty": 75}'
+    """
+    global fan_duty
+    obj = request.get_json(silent=True)
+    if not obj or not isinstance(obj, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+
+    duty = obj.get("duty")
+    if duty is None or not isinstance(duty, int):
+        return jsonify({"error": "'duty' must be an integer"}), 422
+    if not (0 <= duty <= 100):
+        return jsonify({"error": "'duty' must be between 0 and 100"}), 422
+
+    fan_duty = duty
+    return jsonify({"duty": fan_duty}), 200
 
 
 # ---------------------------------------------------------------------------
