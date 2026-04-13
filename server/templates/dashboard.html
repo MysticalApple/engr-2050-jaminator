@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Probe Temp Monitor</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600&display=swap');
+
+  :root {
+    --bg:        #0a0c0f;
+    --panel:     #10151c;
+    --border:    #1e2a38;
+    --accent:    #00ffc3;
+    --accent2:   #ff6b35;
+    --text:      #c8d8e8;
+    --muted:     #4a6070;
+    --mono:      'Share Tech Mono', monospace;
+    --sans:      'Barlow', sans-serif;
+    --glow:      0 0 18px rgba(0,255,195,0.25);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 300;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  header .logo {
+    font-family: var(--mono);
+    font-size: 1.15rem;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-shadow: var(--glow);
+  }
+  header .logo span { color: var(--text); }
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .pulse {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    animation: blink 1.6s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+  /* ── main layout ── */
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 0;
+    padding: 28px 32px;
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  /* ── stats bar ── */
+  .stats {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 20px;
+    min-width: 140px;
+    transition: border-color 0.3s;
+  }
+  .stat-card:hover { border-color: var(--accent); }
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 1.4rem;
+    color: var(--accent);
+    text-shadow: var(--glow);
+  }
+  .stat-value.secondary { color: var(--accent2); text-shadow: 0 0 14px rgba(255,107,53,.3); }
+
+  /* ── chart area ── */
+  .chart-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    position: relative;
+    height: 480px;
+  }
+  .chart-wrap canvas { width: 100% !important; height: 100% !important; }
+
+  .no-data {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+  }
+  .no-data .icon { font-size: 2.5rem; opacity: .4; }
+
+  footer {
+    text-align: center;
+    padding: 14px;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">PROBE<span>MONITOR</span></div>
+  <div class="status-pill">
+    <div class="pulse"></div>
+    <span id="status-text">LIVE &mdash; polling every 2s</span>
+  </div>
+</header>
+
+<main>
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Active Probes</div>
+      <div class="stat-value" id="stat-probes">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Readings</div>
+      <div class="stat-value" id="stat-readings">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Latest Reading</div>
+      <div class="stat-value secondary" id="stat-latest">&mdash;</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Last Updated</div>
+      <div class="stat-value" id="stat-updated" style="font-size:0.95rem">&mdash;</div>
+    </div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="no-data" id="no-data-msg">
+      <div class="icon">⌀</div>
+      <div>Awaiting probe data&hellip;</div>
+      <div style="font-size:0.7rem;opacity:.6">POST to /data to begin</div>
+    </div>
+    <canvas id="chart" style="display:none"></canvas>
+  </div>
+</main>
+
+<footer>POST /data &nbsp;·&nbsp; Content-Type: application/json &nbsp;·&nbsp; {"probe_id","temperature","timestamp"}</footer>
+
+<script>
+// ── palette cycling for probe lines ──
+const PALETTE = [
+  '#00ffc3','#ff6b35','#7eb8f7','#f7d97e','#c97ef7',
+  '#f76e8f','#7ef7c0','#f7a27e','#7ec8f7','#e8f77e'
+];
+
+let chart = null;
+let knownVersion = -1;   // tracks server data_version
+
+function probeColor(index) { return PALETTE[index % PALETTE.length]; }
+
+function buildDatasets(allData) {
+  const probeIds = Object.keys(allData).sort();
+  return probeIds.map((id, i) => {
+    const color = probeColor(i);
+    const points = allData[id]
+      .map(r => ({ x: new Date(r.timestamp), y: r.temperature }))
+      .sort((a, b) => a.x - b.x);
+    return {
+      label: id,
+      data: points,
+      borderColor: color,
+      backgroundColor: color + '18',
+      pointBackgroundColor: color,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      tension: 0.35,
+      fill: false,
+      borderWidth: 2,
+    };
+  });
+}
+
+function initChart(datasets) {
+  const ctx = document.getElementById('chart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 400 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: {
+            color: '#c8d8e8',
+            font: { family: "'Share Tech Mono', monospace", size: 11 },
+            boxWidth: 14,
+          }
+        },
+        tooltip: {
+          backgroundColor: '#10151c',
+          borderColor: '#1e2a38',
+          borderWidth: 1,
+          titleColor: '#00ffc3',
+          bodyColor: '#c8d8e8',
+          titleFont: { family: "'Share Tech Mono', monospace" },
+          bodyFont:  { family: "'Barlow', sans-serif", weight: '300' },
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}°`
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: { tooltipFormat: 'HH:mm:ss', displayFormats: { second:'HH:mm:ss', minute:'HH:mm', hour:'HH:mm' } },
+          grid: { color: '#1e2a38' },
+          ticks: { color: '#4a6070', font: { family: "'Share Tech Mono', monospace", size: 10 } }
+        },
+        y: {
+          grid: { color: '#1e2a38' },
+          ticks: {
+            color: '#4a6070',
+            font: { family: "'Share Tech Mono', monospace", size: 10 },
+            callback: v => v + '°'
+          }
+        }
+      }
+    }
+  });
+}
+
+function updateStats(allData) {
+  const probeIds = Object.keys(allData);
+  let totalReadings = 0;
+  let latestTemp = null, latestTime = null;
+
+  probeIds.forEach(id => {
+    allData[id].forEach(r => {
+      totalReadings++;
+      const t = new Date(r.timestamp);
+      if (!latestTime || t > latestTime) {
+        latestTime = t;
+        latestTemp = r.temperature;
+      }
+    });
+  });
+
+  document.getElementById('stat-probes').textContent   = probeIds.length;
+  document.getElementById('stat-readings').textContent = totalReadings;
+  document.getElementById('stat-latest').textContent   = latestTemp !== null ? latestTemp.toFixed(2) + '°' : '—';
+  document.getElementById('stat-updated').textContent  = new Date().toLocaleTimeString();
+}
+
+async function poll() {
+  try {
+    const res  = await fetch('/api/version');
+    const { version } = await res.json();
+
+    if (version === knownVersion) return;   // nothing new
+    knownVersion = version;
+
+    const res2   = await fetch('/api/data');
+    const allData = await res2.json();      // { probe_id: [ {timestamp, temperature}, ... ] }
+
+    const hasData = Object.keys(allData).length > 0;
+    document.getElementById('no-data-msg').style.display = hasData ? 'none' : 'flex';
+    document.getElementById('chart').style.display       = hasData ? 'block' : 'none';
+
+    if (!hasData) return;
+
+    const datasets = buildDatasets(allData);
+
+    if (!chart) {
+      initChart(datasets);
+    } else {
+      chart.data.datasets = datasets;
+      chart.update('none');
+    }
+
+    updateStats(allData);
+  } catch (e) {
+    console.warn('Poll error:', e);
+  }
+}
+
+// kick off polling
+poll();
+setInterval(poll, 2000);
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+idf_component_register(
+    SRCS
+        "app_main.c"
+        "wifi.c"
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        nvs_flash
+        esp_wifi
+        wpa_supplicant
+        esp_event
+        esp_netif
+        esp_http_client
+        lwip
+        esp32-owb
+        esp32-ds18b20
+)

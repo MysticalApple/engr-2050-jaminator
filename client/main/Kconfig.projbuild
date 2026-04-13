@@ -1,0 +1,56 @@
+menu "Temperature Reporter Configuration"
+
+    config WIFI_SSID
+        string "WiFi SSID"
+        default "MyEnterpriseNetwork"
+        help
+            SSID of the WPA2-Enterprise (802.1X) network to connect to.
+
+    config EAP_IDENTITY
+        string "EAP anonymous (outer) identity"
+        default ""
+        help
+            The outer identity sent in the clear during EAP negotiation.
+            Often left blank, or set to "anonymous@yourdomain.com".
+            Check with your network administrator.
+
+    config EAP_USERNAME
+        string "EAP username (inner identity)"
+        default ""
+        help
+            Your actual username used for PEAP/MSCHAPv2 authentication.
+            This is sent encrypted inside the EAP tunnel.
+
+    config EAP_PASSWORD
+        string "EAP password"
+        default ""
+        help
+            Password for EAP authentication.
+
+    config SERVER_ADDRESS
+        string "Flask server base address"
+        default "192.168.1.100"
+        help
+            Base address of the temperature monitoring Flask server.
+            Example: 192.168.1.100
+
+    config ONE_WIRE_GPIO
+        int "1-Wire bus GPIO pin number"
+        default 4
+        help
+            GPIO pin number connected to the DS18B20 data line.
+
+    config ENABLE_STRONG_PULLUP_GPIO
+        bool "Enable external strong pull-up via GPIO"
+        default n
+        help
+            Enable this if you use a transistor-based strong pull-up
+            circuit to supply extra current during temperature conversions
+            (useful with parasitic-powered sensors).
+
+    config STRONG_PULLUP_GPIO
+        int "Strong pull-up GPIO pin number"
+        depends on ENABLE_STRONG_PULLUP_GPIO
+        default 5
+
+endmenu

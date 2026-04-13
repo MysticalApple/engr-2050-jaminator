@@ -1,0 +1,4 @@
+client/sdkconfig*
+client/build
+control-simulation/__pycache__
+server/__pycache__
