@@ -36,7 +36,7 @@ menu "Temperature Reporter Configuration"
 
     config ONE_WIRE_GPIO
         int "1-Wire bus GPIO pin number"
-        default 4
+        default 23
         help
             GPIO pin number connected to the DS18B20 data line.
 
@@ -52,5 +52,9 @@ menu "Temperature Reporter Configuration"
         int "Strong pull-up GPIO pin number"
         depends on ENABLE_STRONG_PULLUP_GPIO
         default 5
+
+    config FAN_PWM_GPIO
+        int "Fan PWM GPIO pin number"
+        default 18
 
 endmenu

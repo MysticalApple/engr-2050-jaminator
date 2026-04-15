@@ -2,6 +2,7 @@ idf_component_register(
     SRCS
         "app_main.c"
         "wifi.c"
+        "fan.c"
     INCLUDE_DIRS
         "."
     REQUIRES
@@ -14,4 +15,5 @@ idf_component_register(
         lwip
         esp32-owb
         esp32-ds18b20
+        driver
 )
