@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Probe Temp Monitor</title>
+<title>The Jamonitor</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
@@ -235,7 +235,7 @@
 <body>
 
 <header>
-  <div class="logo">PROBE<span>MONITOR</span></div>
+  <div class="logo">JAM<span>ONITOR</span></div>
   <div class="status-pill">
     <div class="pulse"></div>
     <span id="status-text">LIVE &mdash; polling every 2s</span>
@@ -260,6 +260,9 @@
       <div class="stat-label">Last Updated</div>
       <div class="stat-value" id="stat-updated" style="font-size:0.95rem">&mdash;</div>
     </div>
+    <button id="clear-btn" class="fan-set-btn" style="margin-left:auto;" onclick="clearData()">
+        CLEAR DATA
+    </button>
   </div>
 
   <div class="chart-wrap">
@@ -282,8 +285,6 @@
     <div class="fan-feedback" id="fan-feedback"></div>
   </div>
 </main>
-
-<footer>POST /data &nbsp;·&nbsp; Content-Type: application/json &nbsp;·&nbsp; {"probe_id","temperature","timestamp"}</footer>
 
 <script>
 // ── palette cycling for probe lines ──
@@ -467,6 +468,24 @@ async function setFanDuty() {
   } finally {
     btn.disabled = false;
     setTimeout(() => { fb.textContent = ''; }, 2500);
+  }
+}
+
+async function clearData() {
+  const btn = document.getElementById('clear-btn');
+  btn.disabled = true;
+  btn.textContent = 'Clearing…';
+
+  try {
+    const res = await fetch('/api/data/clear', { method: 'POST' });
+    if (res.ok) {
+      knownVersion = -1; // force refresh on next poll
+    }
+  } catch (e) {
+    console.warn('Clear failed:', e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'CLEAR DATA';
   }
 }
 

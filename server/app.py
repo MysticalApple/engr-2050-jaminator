@@ -154,6 +154,13 @@ def api_data():
     return jsonify(dict(probe_data))
 
 
+@app.post("/api/data/clear")
+def api_data_clear():
+    """Clear all stored measurements."""
+    probe_data.clear()
+    return jsonify(dict(probe_data))
+
+
 @app.get("/api/version")
 def api_version():
     """Lightweight endpoint the browser polls to check for new data."""
